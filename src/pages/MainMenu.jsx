@@ -1,0 +1,112 @@
+import React, { useState } from 'react';
+
+export const TIMER_MODES = [
+  { id: 1, label: '⏱ 10 Minutes', seconds: 600 },
+  { id: 2, label: '⚡ 1 Minute', seconds: 60 },
+  { id: 3, label: '🕓 4 Minutes', seconds: 240 },
+  { id: 4, label: '⏱ 2:30 Minutes', seconds: 150 },
+  { id: 5, label: '▲ 30 Minutes', seconds: 1800 },
+];
+
+export default function MainMenu({ onPlayNormal, onPlayPhoenix }) {
+  const [showTimerSelect, setShowTimerSelect] = useState(null);
+  const [selectedTimer, setSelectedTimer] = useState(TIMER_MODES[0]);
+
+  const handleModeSelect = (mode) => setShowTimerSelect(mode);
+
+  const handleStartGame = () => {
+    if (showTimerSelect === 'normal') onPlayNormal(selectedTimer);
+    else onPlayPhoenix(selectedTimer);
+  };
+
+  const menuItems = [
+    {
+      id: 'normal',
+      icon: '♟',
+      title: 'Play vs Bot',
+      subtitle: 'Chess with AI opponent',
+      gradient: 'from-amber-500/20 to-amber-700/10',
+      border: 'border-amber-500/30',
+      glow: 'hover:shadow-[0_0_24px_hsl(40,90%,55%,0.15)]',
+    },
+    {
+      id: 'phoenix',
+      icon: '🔥',
+      title: 'Phoenix Core',
+      subtitle: 'Custom 2-player variant',
+      gradient: 'from-orange-600/20 to-red-800/10',
+      border: 'border-orange-500/30',
+      glow: 'hover:shadow-[0_0_24px_rgba(249,115,22,0.2)]',
+    },
+  ];
+
+  if (showTimerSelect) {
+    const isPhoenix = showTimerSelect === 'phoenix';
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 font-inter">
+        <button onClick={() => setShowTimerSelect(null)} className="mb-6 text-sm text-muted-foreground hover:text-foreground transition-colors self-start">
+          ← Back
+        </button>
+        <h2 className="text-2xl font-black text-foreground mb-1">
+          {isPhoenix ? '🔥 Phoenix Core' : '♟ Play vs Bot'}
+        </h2>
+        <p className="text-muted-foreground text-sm mb-6">
+          Choose time per player
+        </p>
+        <div className="space-y-3 w-full max-w-sm mb-6">
+          {TIMER_MODES.map((mode) => (
+            <button
+              key={mode.id}
+              onClick={() => setSelectedTimer(mode)}
+              className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-200 ${
+                selectedTimer.id === mode.id
+                  ? 'border-primary bg-primary/10 shadow-lg shadow-primary/20'
+                  : 'border-border bg-card hover:bg-card/80'
+              }`}
+            >
+              <span className="font-semibold text-sm text-foreground">{mode.label}</span>
+              <span className="font-mono text-xs text-muted-foreground">
+                {Math.floor(mode.seconds / 60)}:{(mode.seconds % 60).toString().padStart(2,'0')}
+              </span>
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={handleStartGame}
+          className="w-full max-w-sm py-4 rounded-xl bg-primary text-primary-foreground font-bold text-base hover:bg-primary/90 transition-colors shadow-lg shadow-primary/30"
+        >
+          Start Game →
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 font-inter">
+      <div className="flex flex-col items-center mb-12">
+        <span className="text-6xl mb-4 drop-shadow-lg">♟</span>
+        <h1 className="text-5xl font-black text-foreground tracking-tight">
+          Chess<span className="text-primary">.</span>
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1 font-medium">Modern Chess Experience</p>
+      </div>
+      <div className="flex flex-col gap-4 w-full max-w-sm">
+        {menuItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => handleModeSelect(item.id)}
+            className={`flex items-center gap-4 px-5 py-4 rounded-2xl border bg-gradient-to-r ${item.gradient} ${item.border} ${item.glow} transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] text-left`}
+          >
+            <span className="text-2xl">{item.icon}</span>
+            <div className="flex flex-col">
+              <span className="font-bold text-foreground text-base">{item.title}</span>
+              <span className="text-xs text-muted-foreground">{item.subtitle}</span>
+            </div>
+            <span className="ml-auto text-muted-foreground">→</span>
+          </button>
+        ))}
+      </div>
+      <p className="mt-10 text-xs text-muted-foreground/50">Powered by Stockfish AI • Chess.js</p>
+    </div>
+  );
+      }
