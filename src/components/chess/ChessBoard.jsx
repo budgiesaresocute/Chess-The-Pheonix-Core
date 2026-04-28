@@ -1,8 +1,18 @@
 import React from 'react';
 
-const PIECES = {
-  wk:'♔', wq:'♕', wr:'♖', wb:'♗', wn:'♘', wp:'♙',
-  bk:'♚', bq:'♛', br:'♜', bb:'♝', bn:'♞', bp:'♟',
+const PIECE_IMAGES = {
+  wk: 'https://www.chess.com/chess-themes/pieces/neo/150/wk.png',
+  wq: 'https://www.chess.com/chess-themes/pieces/neo/150/wq.png',
+  wr: 'https://www.chess.com/chess-themes/pieces/neo/150/wr.png',
+  wb: 'https://www.chess.com/chess-themes/pieces/neo/150/wb.png',
+  wn: 'https://www.chess.com/chess-themes/pieces/neo/150/wn.png',
+  wp: 'https://www.chess.com/chess-themes/pieces/neo/150/wp.png',
+  bk: 'https://www.chess.com/chess-themes/pieces/neo/150/bk.png',
+  bq: 'https://www.chess.com/chess-themes/pieces/neo/150/bq.png',
+  br: 'https://www.chess.com/chess-themes/pieces/neo/150/br.png',
+  bb: 'https://www.chess.com/chess-themes/pieces/neo/150/bb.png',
+  bn: 'https://www.chess.com/chess-themes/pieces/neo/150/bn.png',
+  bp: 'https://www.chess.com/chess-themes/pieces/neo/150/bp.png',
 };
 
 const FILES = ['a','b','c','d','e','f','g','h'];
@@ -117,19 +127,17 @@ export default function ChessBoard({
                             zIndex: 25,
                           }} />
                         )}
-                        <span style={{
-                          fontSize: '32px',
-                          lineHeight: 1,
-                          userSelect: 'none',
-                          display: 'block',
-                          color: piece.color === 'w' ? '#ffffff' : '#1a1a1a',
-                          WebkitTextStroke: piece.color === 'w' ? '1.5px #555' : '1.5px #fff',
-                          filter: piece.color === 'w'
-                            ? 'drop-shadow(0 1px 3px rgba(0,0,0,0.9))'
-                            : 'drop-shadow(0 1px 3px rgba(255,255,255,0.3))',
-                        }}>
-                          {PIECES[piece.color + piece.type]}
-                        </span>
+                        <img
+  src={PIECE_IMAGES[piece.color + piece.type]}
+  alt={piece.color + piece.type}
+  style={{
+    width: '38px',
+    height: '38px',
+    userSelect: 'none',
+    pointerEvents: 'none',
+    display: 'block',
+  }}
+/>
                       </div>
                     )}
 
