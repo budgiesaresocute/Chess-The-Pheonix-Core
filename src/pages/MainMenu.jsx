@@ -8,7 +8,7 @@ export const TIMER_MODES = [
   { id: 5, label: '▲ 30 Minutes', seconds: 1800 },
 ];
 
-export default function MainMenu({ onPlayNormal, onPlayPhoenix }) {
+export default function MainMenu({ onPlayNormal, onPlayPhoenix, onPlayOnline }) {
   const [showTimerSelect, setShowTimerSelect] = useState(null);
   const [selectedTimer, setSelectedTimer] = useState(TIMER_MODES[0]);
 
@@ -16,10 +16,20 @@ export default function MainMenu({ onPlayNormal, onPlayPhoenix }) {
 
   const handleStartGame = () => {
     if (showTimerSelect === 'normal') onPlayNormal(selectedTimer);
+    else if (showTimerSelect === 'online') onPlayOnline(selectedTimer);
     else onPlayPhoenix(selectedTimer);
   };
 
   const menuItems = [
+    {
+      id: 'online',
+      icon: '🌐',
+      title: 'Play Online',
+      subtitle: 'Matchmaking vs real players',
+      gradient: 'from-blue-500/20 to-blue-700/10',
+      border: 'border-blue-500/30',
+      glow: 'hover:shadow-[0_0_24px_rgba(59,130,246,0.2)]',
+    },
     {
       id: 'normal',
       icon: '♟',
@@ -42,17 +52,16 @@ export default function MainMenu({ onPlayNormal, onPlayPhoenix }) {
 
   if (showTimerSelect) {
     const isPhoenix = showTimerSelect === 'phoenix';
+    const isOnline = showTimerSelect === 'online';
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 font-inter">
         <button onClick={() => setShowTimerSelect(null)} className="mb-6 text-sm text-muted-foreground hover:text-foreground transition-colors self-start">
           ← Back
         </button>
         <h2 className="text-2xl font-black text-foreground mb-1">
-          {isPhoenix ? '🔥 Phoenix Core' : '♟ Play vs Bot'}
+          {isPhoenix ? '🔥 Phoenix Core' : isOnline ? '🌐 Play Online' : '♟ Play vs Bot'}
         </h2>
-        <p className="text-muted-foreground text-sm mb-6">
-          Choose time per player
-        </p>
+        <p className="text-muted-foreground text-sm mb-6">Choose time per player</p>
         <div className="space-y-3 w-full max-w-sm mb-6">
           {TIMER_MODES.map((mode) => (
             <button
@@ -75,7 +84,7 @@ export default function MainMenu({ onPlayNormal, onPlayPhoenix }) {
           onClick={handleStartGame}
           className="w-full max-w-sm py-4 rounded-xl bg-primary text-primary-foreground font-bold text-base hover:bg-primary/90 transition-colors shadow-lg shadow-primary/30"
         >
-          Start Game →
+          {isOnline ? 'Find Match →' : 'Start Game →'}
         </button>
       </div>
     );
