@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React from 'react';
+import MoveArrows from './MoveArrows';
 
 const PIECE_IMAGES = {
   wk: 'https://www.chess.com/chess-themes/pieces/neo/150/wk.png',
@@ -25,75 +26,47 @@ export default function ChessBoard({
   lastMove,
   onSquareClick,
   checkSquare,
-
-  // Phoenix / advanced props
-  phoenixSquares,
-  phoenixMoves = [],
-  evalScore = 0
+  arrows = [],   // ✅ NEW
+  flipped = false
 }) {
-
   const board = game.board();
 
-  /* memo prevents unnecessary recalculation */
-  const memoBoard = useMemo(() => board, [game]);
-
   return (
-    <div className="relative inline-block select-none">
+    <div className="relative inline-block">
 
-      {/* ♟️ Eval Bar */}
-      <div className="absolute right-0 top-0 w-2 h-full bg-gray-900 z-10">
-        <div
-          className="w-full bg-white"
-          style={{
-            height: `${50 + Math.max(-50, Math.min(50, evalScore))}%`,
-            transition: 'height 0.2s ease'
-          }}
-        />
-      </div>
+      {/* ♟️ MOVE ARROWS OVERLAY */}
+      <MoveArrows arrows={arrows} flipped={flipped} />
 
-      {/* Board */}
       <div className="flex">
 
         {/* Rank labels */}
         <div className="flex flex-col" style={{ width: '18px' }}>
           {RANKS.map(rank => (
-            <div
-              key={rank}
-              style={{ width: '18px', height: '44px' }}
-              className="flex items-center justify-center text-xs font-bold opacity-70"
-            >
+            <div key={rank} className="flex items-center justify-center text-xs font-bold opacity-70"
+              style={{ width: '18px', height: '44px' }}>
               {rank}
             </div>
           ))}
         </div>
 
-        {/* Chess grid */}
         <div>
 
+          {/* Board */}
           {RANKS.map((rank, ri) => (
             <div key={rank} className="flex">
-
               {FILES.map((file, fi) => {
 
                 const square = file + rank;
-                const piece = memoBoard[ri][fi];
+                const piece = board[ri][fi];
 
                 const isLight = (ri + fi) % 2 === 0;
                 const isSelected = selectedSquare === square;
                 const isLegal = legalMoves.includes(square);
-                const isLastMove =
-                  lastMove?.from === square || lastMove?.to === square;
-
+                const isLastMove = lastMove &&
+                  (lastMove.from === square || lastMove.to === square);
                 const isCheck = checkSquare === square;
-                const isPhoenixMove = phoenixMoves.includes(square);
 
-                const hasPhoenix =
-                  phoenixSquares?.w === square ||
-                  phoenixSquares?.b === square;
-
-                /* base color */
                 let bg = isLight ? '#f0d9b5' : '#b58863';
-
                 if (isLastMove) bg = '#cdd16f';
                 if (isSelected) bg = '#f6f669';
                 if (isCheck) bg = '#ff6b6b';
@@ -102,58 +75,51 @@ export default function ChessBoard({
                   <div
                     key={square}
                     onClick={() => onSquareClick(square)}
-                    className="relative flex items-center justify-center"
                     style={{
                       width: '44px',
                       height: '44px',
                       backgroundColor: bg,
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       cursor: 'pointer',
+                      zIndex: 1
                     }}
                   >
 
                     {/* legal move dot */}
                     {isLegal && !piece && (
-                      <div className="absolute w-3 h-3 bg-black opacity-25 rounded-full" />
+                      <div style={{
+                        width: '12px',
+                        height: '12px',
+                        borderRadius: '50%',
+                        background: 'rgba(0,0,0,0.25)',
+                        position: 'absolute'
+                      }} />
                     )}
 
-                    {/* capture highlight */}
+                    {/* capture ring */}
                     {isLegal && piece && (
-                      <div className="absolute inset-0 border-4 border-black opacity-30" />
+                      <div style={{
+                        inset: 0,
+                        position: 'absolute',
+                        border: '3px solid rgba(0,0,0,0.3)'
+                      }} />
                     )}
 
-                    {/* phoenix hint */}
-                    {isPhoenixMove && (
-                      <div className="absolute inset-0 bg-orange-400/30 border border-orange-500" />
-                    )}
-
-                    {/* PIECE */}
+                    {/* piece */}
                     {piece && (
-                      <div className="relative z-20">
-
-                        {/* Phoenix aura */}
-                        {hasPhoenix && (
-                          <div className="absolute -inset-1 rounded-full border-2 border-blue-400 animate-pulse" />
-                        )}
-
-                        <img
-                          src={PIECE_IMAGES[piece.color + piece.type]}
-                          alt={piece.type}
-                          className="w-9 h-9 pointer-events-none select-none"
-                        />
-                      </div>
-                    )}
-
-                    {/* file/rank labels */}
-                    {fi === 0 && (
-                      <span className="absolute top-0 left-1 text-[9px] opacity-60">
-                        {rank}
-                      </span>
-                    )}
-
-                    {ri === 7 && (
-                      <span className="absolute bottom-0 right-1 text-[9px] opacity-60">
-                        {file}
-                      </span>
+                      <img
+                        src={PIECE_IMAGES[piece.color + piece.type]}
+                        alt=""
+                        style={{
+                          width: '38px',
+                          height: '38px',
+                          zIndex: 5,
+                          pointerEvents: 'none'
+                        }}
+                      />
                     )}
 
                   </div>
@@ -162,14 +128,12 @@ export default function ChessBoard({
             </div>
           ))}
 
-          {/* bottom files */}
-          <div className="flex h-[18px]">
-            {FILES.map(file => (
-              <div
-                key={file}
-                className="w-[44px] text-center text-xs font-bold opacity-70"
-              >
-                {file}
+          {/* file labels */}
+          <div className="flex">
+            {FILES.map(f => (
+              <div key={f} style={{ width: '44px' }}
+                className="text-xs text-center opacity-70 font-bold">
+                {f}
               </div>
             ))}
           </div>
@@ -178,4 +142,4 @@ export default function ChessBoard({
       </div>
     </div>
   );
-      }
+                        }
