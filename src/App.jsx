@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import MainMenu from './pages/MainMenu';
 import NormalChess from './pages/NormalChess';
 import PhoenixCore from './pages/PhoenixCore';
+import OnlineChess from './pages/OnlineChess';
 
 export default function App() {
   const [screen, setScreen] = useState('menu');
@@ -19,7 +20,13 @@ export default function App() {
     setScreen('phoenix');
   };
 
+  const handlePlayOnline = (timer) => {
+    setTimerMode(timer);
+    setScreen('online');
+  };
+
   if (screen === 'normal') return <NormalChess timerMode={timerMode} onBack={goMenu} />;
   if (screen === 'phoenix') return <PhoenixCore timerMode={timerMode} onBack={goMenu} />;
-  return <MainMenu onPlayNormal={handlePlayNormal} onPlayPhoenix={handlePlayPhoenix} />;
+  if (screen === 'online') return <OnlineChess timerMode={timerMode} onBack={goMenu} />;
+  return <MainMenu onPlayNormal={handlePlayNormal} onPlayPhoenix={handlePlayPhoenix} onPlayOnline={handlePlayOnline} />;
 }
