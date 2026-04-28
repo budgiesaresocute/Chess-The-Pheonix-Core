@@ -1,36 +1,50 @@
-// Stockfish Web Worker wrapper
-
 export function createStockfish() {
   const stockfish = new Worker(
     'https://cdn.jsdelivr.net/npm/stockfish@16/src/stockfish.js'
   );
 
-  let callbacks = [];
+  let bestMoveResolver = null;
+  let moveBuffer = [];
 
   stockfish.onmessage = (e) => {
     const line = e.data;
 
-    if (line.includes('bestmove')) {
-      const parts = line.split(' ');
-      const move = parts[1];
-      callbacks.forEach(cb => cb(move));
-      callbacks = [];
+    // Collect MultiPV lines (optional future upgrade)
+    if (line.startsWith('info') && line.includes(' pv ')) {
+      const match = line.match(/ pv ([a-h][1-8][a-h][1-8][qrbn]?)/);
+      if (match) {
+        moveBuffer.push(match[1]);
+      }
+    }
+
+    // Final move
+    if (line.startsWith('bestmove')) {
+      const move = line.split(' ')[1];
+
+      if (bestMoveResolver) {
+        bestMoveResolver(move);
+        bestMoveResolver = null;
+      }
+
+      moveBuffer = [];
     }
   };
 
   const send = (cmd) => stockfish.postMessage(cmd);
 
   send('uci');
+  send('isready');
 
   return {
     getBestMove: (fen, depth = 15, multiPV = 3) => {
       return new Promise((resolve) => {
-        callbacks.push((bestMove) => resolve(bestMove));
+        bestMoveResolver = resolve;
 
-        send(`position fen ${fen}`);
+        send(`ucinewgame`);
         send(`setoption name MultiPV value ${multiPV}`);
+        send(`position fen ${fen}`);
         send(`go depth ${depth}`);
       });
     }
   };
-                         
+    }
