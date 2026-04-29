@@ -3,51 +3,49 @@ import React from 'react';
 const FILES = ['a','b','c','d','e','f','g','h'];
 
 export default function MoveArrows({ arrows = [], flipped = false }) {
-
-  const sqToXY = (sq) => {
+  const center = (sq) => {
     const file = FILES.indexOf(sq[0]);
     const rank = parseInt(sq[1]) - 1;
-
-    return flipped
-      ? { x: 7 - file, y: rank }
-      : { x: file, y: 7 - rank };
+    const x = flipped ? (7 - file) : file;
+    const y = flipped ? rank : (7 - rank);
+    return { x: x + 0.5, y: y + 0.5 };
   };
+
+  if (!arrows.length) return null;
 
   return (
     <svg
-      className="absolute top-0 left-0 w-full h-full pointer-events-none z-30"
+      style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:30 }}
       viewBox="0 0 8 8"
     >
+      <defs>
+        <marker id="mah-orange" markerWidth="0.5" markerHeight="0.5" refX="0.4" refY="0.25" orient="auto">
+          <polygon points="0 0,0.5 0.25,0 0.5" fill="rgba(255,140,0,0.9)" />
+        </marker>
+        <marker id="mah-blue" markerWidth="0.5" markerHeight="0.5" refX="0.4" refY="0.25" orient="auto">
+          <polygon points="0 0,0.5 0.25,0 0.5" fill="rgba(0,150,255,0.9)" />
+        </marker>
+        <marker id="mah-green" markerWidth="0.5" markerHeight="0.5" refX="0.4" refY="0.25" orient="auto">
+          <polygon points="0 0,0.5 0.25,0 0.5" fill="rgba(0,200,80,0.9)" />
+        </marker>
+      </defs>
       {arrows.map((a, i) => {
-        const from = sqToXY(a.from);
-        const to = sqToXY(a.to);
-
+        if (a.from === a.to) return null;
+        const f = center(a.from), t = center(a.to);
+        const dx = t.x - f.x, dy = t.y - f.y;
+        const len = Math.sqrt(dx*dx + dy*dy);
+        const ex = t.x - (dx/len)*0.3, ey = t.y - (dy/len)*0.3;
+        const color = a.color || 'orange';
+        const strokeMap = { orange:'rgba(255,140,0,0.8)', blue:'rgba(0,150,255,0.8)', green:'rgba(0,200,80,0.8)' };
         return (
-          <line
-            key={i}
-            x1={from.x + 0.5}
-            y1={from.y + 0.5}
-            x2={to.x + 0.5}
-            y2={to.y + 0.5}
-            stroke={a.color || 'rgba(0,150,255,0.6)'}
-            strokeWidth="0.18"
-            markerEnd="url(#arrowhead)"
+          <line key={i}
+            x1={f.x} y1={f.y} x2={ex} y2={ey}
+            stroke={strokeMap[color] || strokeMap.orange}
+            strokeWidth="0.18" strokeLinecap="round"
+            markerEnd={`url(#mah-${color})`}
           />
         );
       })}
-
-      <defs>
-        <marker
-          id="arrowhead"
-          markerWidth="0.3"
-          markerHeight="0.3"
-          refX="0.1"
-          refY="0.15"
-          orient="auto"
-        >
-          <polygon points="0 0, 0.3 0.15, 0 0.3" fill="rgba(0,150,255,0.8)" />
-        </marker>
-      </defs>
     </svg>
   );
 }
