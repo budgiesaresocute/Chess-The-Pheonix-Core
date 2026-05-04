@@ -1,45 +1,51 @@
 // =====================================
-// Phoenix CORE++ v18 LICHESS BRAIN
-// Strongest practical browser controller
+// Phoenix CORE++ v16 FINAL GOD ENGINE
+// Pure Stockfish • Clean strongest browser controller
 // =====================================
 
-const MAX_ENGINES = 2;
+const MAX_ENGINES = 1;
 
 const ENGINE_STATE = {
   INIT: 0,
-  READY: 1,
-  BUSY: 2
+  LOADING: 1,
+  READY: 2,
+  BUSY: 3
 };
 
 const slots = [];
 let initialized = false;
+let jobSeq = 0;
 
 const now = () => Date.now();
 
-// ================= TIME MANAGER (REAL LICHESS STYLE) =================
-function computeTimeMs(fen, depth) {
-  // Simple but effective allocator
-  // (NOT too restrictive, avoids under-thinking)
-
-  const base = 800;
-  const depthBonus = depth * 250;
-
-  // late-game tends to need more precision
-  const endgameBonus = fen.split(" ")[0].length < 20 ? 200 : 0;
-
-  return Math.min(8000, base + depthBonus + endgameBonus);
+// ================= THINK TIME (STRONG MODE) =================
+function computeThinkMs(depth) {
+  const base = 20000;     // strong baseline thinking
+  const scale = depth * 1200;
+  return Math.min(60000, base + scale); // up to 60s brain time
 }
 
 // ================= ENGINE LOADER =================
 function createEngine() {
-  const src =
-    "https://cdn.jsdelivr.net/npm/stockfish@16.0.0/src/stockfish-nnue-16-single.js";
+  const sources = [
+    "https://cdn.jsdelivr.net/npm/stockfish@16.0.0/src/stockfish-nnue-16-single.js",
+    "https://unpkg.com/stockfish@16.0.0/src/stockfish-nnue-16-single.js",
+    "https://cdn.jsdelivr.net/npm/stockfish@16.0.0/src/stockfish-16-single.js"
+  ];
 
-  importScripts(src);
+  for (const src of sources) {
+    try {
+      importScripts(src);
 
-  return typeof STOCKFISH !== "undefined"
-    ? STOCKFISH()
-    : Stockfish();
+      return typeof STOCKFISH !== "undefined"
+        ? STOCKFISH()
+        : typeof Stockfish !== "undefined"
+        ? Stockfish()
+        : null;
+    } catch {}
+  }
+
+  return null;
 }
 
 // ================= SLOT =================
@@ -49,7 +55,8 @@ function makeSlot(i) {
     worker: null,
     state: ENGINE_STATE.INIT,
     job: null,
-    busyUntil: 0
+    configured: false,
+    bestMove: null
   };
 }
 
@@ -60,14 +67,28 @@ function spawn(i) {
   if (!w) return;
 
   s.worker = w;
-  s.state = ENGINE_STATE.READY;
+  s.state = ENGINE_STATE.LOADING;
 
   w.onmessage = (e) => onMsg(i, typeof e === "string" ? e : e.data);
 
+  // init engine once
   w.postMessage("uci");
 }
 
-// ================= ENGINE PICK =================
+// ================= CONFIG =================
+function configure(s) {
+  if (s.configured || !s.worker) return;
+
+  try {
+    s.worker.postMessage("setoption name Hash value 256");
+    s.worker.postMessage("setoption name Threads value 1");
+    s.worker.postMessage("setoption name Ponder value false");
+    s.worker.postMessage("setoption name UCI_LimitStrength value false");
+    s.configured = true;
+  } catch {}
+}
+
+// ================= GET ENGINE =================
 function getEngine() {
   for (const s of slots) {
     if (s.state === ENGINE_STATE.READY && !s.job) return s;
@@ -76,42 +97,52 @@ function getEngine() {
 }
 
 // ================= SEARCH =================
-function search(fen, depth = 12) {
+function search(fen, depth = 24) {
   return new Promise((resolve) => {
     const s = getEngine();
-    if (!s) return resolve(null);
+    if (!s || !s.worker) return resolve(["0000"]);
 
-    const thinkTime = computeTimeMs(fen, depth);
+    const myJob = ++jobSeq;
+    const thinkMs = computeThinkMs(depth);
 
-    let bestMove = null;
-    let bestDepth = 0;
+    s.job = {
+      id: myJob,
+      resolve,
+      done: false
+    };
 
-    s.job = { resolve, fen };
     s.state = ENGINE_STATE.BUSY;
-    s.busyUntil = now() + thinkTime;
+    s.bestMove = null;
 
-    s.worker.postMessage("stop");
-    s.worker.postMessage("ucinewgame");
-    s.worker.postMessage(`position fen ${fen}`);
+    try {
+      s.worker.postMessage("stop");
+      configure(s);
 
-    // 🔥 KEY: let engine run iterative deepening
-    s.worker.postMessage(`go movetime ${thinkTime}`);
+      s.worker.postMessage(`position fen ${fen}`);
 
-    // fallback safety (if engine stalls)
+      // 🔥 PURE STRONG SEARCH (no interference)
+      s.worker.postMessage(`go depth ${depth} movetime ${thinkMs}`);
+    } catch {}
+
+    // fallback safety only
     setTimeout(() => {
-      if (!s.job) return;
-      s.job.resolve(bestMove);
+      if (!s.job || s.job.id !== myJob || s.job.done) return;
+
+      s.job.done = true;
+      s.job.resolve([s.bestMove || "0000"]);
       s.job = null;
-    }, thinkTime + 500);
+      s.state = ENGINE_STATE.READY;
+    }, thinkMs + 3000);
   });
 }
 
 // ================= ENGINE OUTPUT =================
 function onMsg(i, line) {
   const s = slots[i];
-  if (!s?.worker) return;
+  if (!s?.worker || !line) return;
 
   if (line === "uciok") {
+    configure(s);
     s.worker.postMessage("isready");
     return;
   }
@@ -121,35 +152,28 @@ function onMsg(i, line) {
     return;
   }
 
-  if (s.state !== ENGINE_STATE.BUSY) return;
+  if (s.state !== ENGINE_STATE.BUSY || !s.job) return;
 
-  // ================= TRACK BEST LINE =================
-  if (line.startsWith("info") && line.includes(" pv ")) {
-    const pvIndex = line.indexOf(" pv ");
-    const pv = line.slice(pvIndex + 4).split(" ");
-
-    const depthMatch = line.match(/depth (\d+)/);
-    const depth = depthMatch ? +depthMatch[1] : 0;
-
-    if (depth > s.bestDepth || !s.bestMove) {
-      s.bestDepth = depth;
-      s.bestMove = pv[0];
-    }
-  }
-
-  // ================= FINAL MOVE =================
+  // 🔥 ONLY TRUST FINAL BESTMOVE
   if (line.startsWith("bestmove")) {
     const move = line.split(" ")[1];
 
     const job = s.job;
+    if (!job || job.done) return;
+
+    job.done = true;
+    job.resolve([move && move !== "(none)" ? move : "0000"]);
+
     s.job = null;
     s.state = ENGINE_STATE.READY;
+    s.bestMove = move;
+  }
 
-    // prefer deepest seen move, fallback to bestmove
-    job.resolve(s.bestMove || move || "0000");
-
-    s.bestMove = null;
-    s.bestDepth = 0;
+  // optional: track best seen line (debug only)
+  if (line.startsWith("info") && line.includes(" pv ")) {
+    const pvIndex = line.indexOf(" pv ");
+    const pv = line.slice(pvIndex + 4).split(" ")[0];
+    s.bestMove = pv;
   }
 }
 
@@ -168,11 +192,19 @@ self.onmessage = (e) => {
   }
 
   if (cmd === "search") {
-    search(fen, depth).then((move) => {
-      self.postMessage({
-        type: "result",
-        move
-      });
+    search(fen, depth).then((moves) => {
+      self.postMessage({ type: "result", moves });
     });
+  }
+
+  if (cmd === "stop") {
+    for (const s of slots) {
+      if (!s) continue;
+      s.job = null;
+      s.bestMove = null;
+      try {
+        s.worker?.postMessage("stop");
+      } catch {}
+    }
   }
 };
