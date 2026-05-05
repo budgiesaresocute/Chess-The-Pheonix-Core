@@ -7,7 +7,6 @@ import GameHeader from '../components/chess/GameHeader';
 import GameOverModal from '../components/chess/GameOverModal';
 import { playMoveSound, playCaptureSound, playCheckSound, playCheckmateSound, playGameStartSound } from '../lib/chessSounds';
 import { createStockfish } from '../engine/stockfishBot';
-
 const BOTS = [
   {
     id: 'astra',
@@ -29,7 +28,7 @@ const BOTS = [
     label: 'Easy',
     personality: "Let's play!",
     useEngine: true,
-    depth: 12,
+    depth: 18,
     poolSize: 1,
     inaccuracyRate: 0.25,
     blunderRate: 0.15,
@@ -42,7 +41,7 @@ const BOTS = [
     label: 'Intermediate',
     personality: 'Stay sharp.',
     useEngine: true,
-    depth: 18,
+    depth: 24,
     poolSize: 1,
     inaccuracyRate: 0.20,
     blunderRate: 0.05,
@@ -55,7 +54,7 @@ const BOTS = [
     label: 'Advanced',
     personality: 'I see everything.',
     useEngine: true,
-    depth: 22,
+    depth: 28,
     poolSize: 1,
     inaccuracyRate: 0.15,
     blunderRate: 0.00,
@@ -68,7 +67,7 @@ const BOTS = [
     label: 'Master',
     personality: 'You must be precise.',
     useEngine: true,
-    depth: 26,
+    depth: 32,
     poolSize: 6,
     inaccuracyRate: 0.00,
     blunderRate: 0.00,
@@ -81,7 +80,7 @@ const BOTS = [
     label: 'Maximum',
     personality: 'This is your end.',
     useEngine: true,
-    depth: 30,
+    depth: 36,
     poolSize: 3,
     inaccuracyRate: 0.00,
     blunderRate: 0.00,
