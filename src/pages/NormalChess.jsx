@@ -242,65 +242,78 @@ const triggerBot = useCallback(async (fen, bot) => {
   }, 1000);
 
   try {
-    // ================= ASTRA =================
     if (!bot.useEngine || !engineRef.current) {
       await new Promise(r => setTimeout(r, 600));
       const move = getSimpleMove(fen);
       if (move) applyBotMove(move.from, move.to, move.promotion);
+      return;
     }
 
-    // ================= ENGINE BOTS =================
+    const pool = await engineRef.current.getBestMoveFromPool(fen, bot.depth, 7);
+
+    if (!pool || !pool.length) {
+      const fallback = getSimpleMove(fen);
+      if (fallback) applyBotMove(fallback.from, fallback.to, fallback.promotion);
+      return;
+    }
+
+    const pickTop = (n) =>
+      pool[Math.floor(Math.random() * Math.min(n, pool.length))];
+
+    const randomMove = () => {
+      const temp = new Chess(fen);
+      const moves = temp.moves({ verbose: true });
+      return moves[Math.floor(Math.random() * moves.length)];
+    };
+
+    let move = null;
+    const roll = Math.random();
+
+    if (bot.id === "phoenix") {
+      move = pickTop(3);
+    }
+
+    else if (bot.id === "zenith") {
+      move = pickTop(6);
+    }
+
+    else if (bot.id === "vortex") {
+      if (roll < 0.15) {
+        const m = randomMove();
+        applyBotMove(m.from, m.to, m.promotion);
+        return;
+      }
+      move = pickTop(7);
+    }
+
+    else if (bot.id === "titanx") {
+      if (roll < 0.05) {
+        const m = randomMove();
+        applyBotMove(m.from, m.to, m.promotion);
+        return;
+      }
+      move = roll < 0.25 ? pickTop(5) : pool[0];
+    }
+
+    else if (bot.id === "orion") {
+      if (roll < 0.15) {
+        const m = randomMove();
+        applyBotMove(m.from, m.to, m.promotion);
+        return;
+      }
+      move = roll < 0.40 ? pickTop(5) : pool[0];
+    }
+
     else {
-      const roll = Math.random();
+      move = pool[0];
+    }
 
-      const isBlunder = roll < bot.blunderRate;
-      const isInaccuracy = !isBlunder && roll < (bot.blunderRate + bot.inaccuracyRate);
-
-      // 🔴 BLUNDER → random legal move
-      if (isBlunder) {
-        const temp = new Chess(fen);
-        const moves = temp.moves({ verbose: true });
-        if (moves.length) {
-          const m = moves[Math.floor(Math.random() * moves.length)];
-          applyBotMove(m.from, m.to, m.promotion);
-        }
-      }
-
-      // 🟠 INACCURACY → weaker engine play (fixed logic)
-      else if (isInaccuracy) {
-        const move = await engineRef.current.getBestMoveFromPool(
-          fen,
-          Math.max(6, bot.depth - 4),
-          Math.max(2, bot.topMovePool - 2)
-        );
-
-        if (move) {
-          applyBotMove(move.slice(0, 2), move.slice(2, 4), move[4]);
-        } else {
-          const fallback = getSimpleMove(fen);
-          if (fallback) applyBotMove(fallback.from, fallback.to, fallback.promotion);
-        }
-      }
-
-      // 🟢 NORMAL → STRICT TOP MOVE POOL
-      else {
-        const move = await engineRef.current.getBestMoveFromPool(
-          fen,
-          bot.depth,
-          bot.topMovePool
-        );
-
-        if (move) {
-          applyBotMove(move.slice(0, 2), move.slice(2, 4), move[4] || undefined);
-        } else {
-          const fallback = getSimpleMove(fen);
-          if (fallback) applyBotMove(fallback.from, fallback.to, fallback.promotion);
-        }
-      }
+    if (move) {
+      applyBotMove(move.slice(0, 2), move.slice(2, 4), move[4]);
     }
 
   } catch (e) {
-    console.error('Bot error:', e);
+    console.error("Bot error:", e);
     const fallback = getSimpleMove(fen);
     if (fallback) applyBotMove(fallback.from, fallback.to, fallback.promotion);
   }
