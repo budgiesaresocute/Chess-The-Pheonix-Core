@@ -1,68 +1,38 @@
-import { createStockfish } from "./stockfish.js";
+// =====================================
+// Phoenix Engine Manager (v2 CLEAN FINAL)
+// Single engine • No conflicts • Predictable
+// =====================================
 
-let cluster = null;
-let fallback = null;
+import { createStockfish } from "./stockfishBot";
+
+let engine = null;
 
 // ================= INIT =================
 export function initEngine() {
-  if (!cluster) {
-    cluster = new Worker("/stockfish-worker.js");
-    cluster.postMessage({ cmd: "init" });
-  }
-
-  if (!fallback) {
-    fallback = createStockfish();
+  if (!engine) {
+    engine = createStockfish();
   }
 }
 
-// ================= TIME CONTROL (NEW LICHESS STYLE) =================
-function getThinkTime(depth) {
-  const MIN_TIME = 1200; // minimum thinking time
-  const MAX_TIME = 6000; // max cap
+// ================= GET SINGLE BEST MOVE =================
+export async function getBestMove(fen, depth = 10) {
+  if (!engine) initEngine();
 
-  const time = MIN_TIME + depth * 120;
-  return Math.min(MAX_TIME, time);
+  const move = await engine.getBestMove(fen, depth);
+  return move || null;
 }
 
-// ================= MAIN BOT API =================
-export function getBestMove(fen, depth = 10, mpv = 1) {
-  return new Promise((resolve) => {
-    let done = false;
-    let fallbackTriggered = false;
+// ================= GET MOVE POOL =================
+export async function getMovePool(fen, depth = 10, mpv = 3) {
+  if (!engine) initEngine();
 
-    const thinkTime = getThinkTime(depth);
+  const moves = await engine.getBestMoveFromPool(fen, depth, mpv);
+  return moves || [];
+}
 
-    // ================= FALLBACK SAFETY =================
-    const timeout = setTimeout(async () => {
-      if (done || fallbackTriggered) return;
-
-      fallbackTriggered = true;
-      done = true;
-
-      const move = await fallback.getBestMove(fen, depth, mpv);
-      resolve(move);
-    }, thinkTime + 500); // slightly above engine thinking window
-
-    // ================= CLUSTER RESPONSE =================
-    cluster.onmessage = (e) => {
-      if (done) return;
-
-      if (e.data?.type === "result") {
-        fallbackTriggered = true;
-        done = true;
-
-        clearTimeout(timeout);
-
-        resolve(e.data.moves?.[0] || null);
-      }
-    };
-
-    // ================= SEND TO CLUSTER =================
-    cluster.postMessage({
-      cmd: "search",
-      fen,
-      depth,
-      mpv
-    });
-  });
+// ================= STOP =================
+export function stopEngine() {
+  try {
+    engine?.stop();
+  } catch {}
 }
