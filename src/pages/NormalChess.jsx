@@ -557,8 +557,8 @@ export default function NormalChess({ timerMode, onBack }) {
       )}  
 
       {drawOffer && (  
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
-                    <div className="bg-card border border-border rounded-2xl p-6 text-center shadow-2xl w-72">  
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50
+          <div className="bg-card border border-border rounded-2xl p-6 text-center shadow-2xl w-72">  
             <h3 className="text-foreground font-bold text-lg mb-2">🤝 Offer Draw?</h3>  
             <p className="text-muted-foreground text-sm mb-4">The bot will consider your offer.</p>  
             <div className="flex gap-3">  
@@ -625,4 +625,4 @@ export default function NormalChess({ timerMode, onBack }) {
         onRematch={handleRestart} onMenu={onBack} />  
     </div>
   );
-          }
+            }
