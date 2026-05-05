@@ -1,7 +1,6 @@
 // =====================================
 // Phoenix Stockfish Bot (v11.2-lite ENHANCED)
 // =====================================
-
 let sf = null;
 let isReady = false;
 let failed = false;
@@ -12,26 +11,30 @@ let topMoves = [];
 let initPromise = null;
 
 const MAX_PV = 7;
-const TIMEOUT = 40000;
+const TIMEOUT = 60000;
 
 function loadStockfish() {
   if (initPromise) return initPromise;
 
   initPromise = new Promise((resolve) => {
     const sources = [
+      "https://cdn.jsdelivr.net/npm/stockfish@18.0.0/src/stockfish-nnue-16-single.js",
+      "https://unpkg.com/stockfish@18.0.0/src/stockfish-nnue-16-single.js",
+      "https://cdn.jsdelivr.net/npm/stockfish@17.1.0/src/stockfish-nnue-16-single.js",
+      "https://unpkg.com/stockfish@17.1.0/src/stockfish-nnue-16-single.js",
       "https://cdn.jsdelivr.net/npm/stockfish@16.0.0/src/stockfish-nnue-16-single.js",
-      "https://cdn.jsdelivr.net/npm/stockfish@16.0.0/src/stockfish-16-single.js",
-      "https://unpkg.com/stockfish@16.0.0/src/stockfish-nnue-16-single.js"
     ];
 
     const tryNext = (i = 0) => {
       if (i >= sources.length) {
         failed = true;
+        console.error('Failed to load Stockfish from all sources');
         resolve(false);
         return;
       }
 
       try {
+        console.log(`Loading Stockfish from: ${sources[i]}`);
         importScripts(sources[i]);
 
         sf =
@@ -41,7 +44,12 @@ function loadStockfish() {
             ? Stockfish()
             : null;
 
-        if (!sf) return tryNext(i + 1);
+        if (!sf) {
+          console.log(`Source ${i} failed, trying next...`);
+          return tryNext(i + 1);
+        }
+
+        console.log('✅ Stockfish loaded successfully');
 
         sf.onmessage = (e) =>
           handleMessage(typeof e === "string" ? e : e.data);
@@ -50,7 +58,8 @@ function loadStockfish() {
         sf.postMessage("isready");
 
         setTimeout(() => resolve(true), 3000);
-      } catch {
+      } catch (e) {
+        console.log(`Error loading source ${i}:`, e.message);
         tryNext(i + 1);
       }
     };
@@ -109,7 +118,10 @@ function handleMessage(line) {
 function search(fen, depth, mpv = 1) {
   return new Promise(async (resolve) => {
     const ready = await loadStockfish();
-    if (!ready || !sf) return resolve([]);
+    if (!ready || !sf) {
+      console.error('Stockfish not ready');
+      return resolve([]);
+    }
 
     session++;
     const mySession = session;
@@ -126,6 +138,7 @@ function search(fen, depth, mpv = 1) {
 
     setTimeout(() => {
       if (pending?.session === mySession) {
+        console.log('Search timeout, returning current best moves');
         pending.resolve([]);
         pending = null;
       }
@@ -154,4 +167,4 @@ export function createStockfish() {
       sf?.postMessage("stop");
     }
   };
-}
+        }
