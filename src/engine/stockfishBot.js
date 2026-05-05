@@ -1,11 +1,10 @@
 // =====================================
-// Phoenix Stockfish Bot (v13 CLEAN FINAL)
-// Single-engine • Stable • MultiPV pool
+// Phoenix Stockfish Bot (v14 FIXED)
+// NNUE-safe • Stable search • Real thinking time
 // =====================================
 
 let sf = null;
 let isReady = false;
-let failed = false;
 
 let session = 0;
 let pending = null;
@@ -13,7 +12,9 @@ let topMoves = [];
 let initPromise = null;
 
 const MAX_PV = 7;
-const TIMEOUT = 20000; // 🔥 increased thinking safety
+
+// 🔥 higher floor = prevents instant moves
+const MIN_THINK_TIME = 3500;
 
 // ================= INIT =================
 function loadStockfish() {
@@ -22,13 +23,11 @@ function loadStockfish() {
   initPromise = new Promise((resolve) => {
     const sources = [
       "https://cdn.jsdelivr.net/npm/stockfish@16.0.0/src/stockfish-nnue-16-single.js",
-      "https://cdn.jsdelivr.net/npm/stockfish@16.0.0/src/stockfish-16-single.js",
       "https://unpkg.com/stockfish@16.0.0/src/stockfish-nnue-16-single.js"
     ];
 
     const tryNext = (i = 0) => {
       if (i >= sources.length) {
-        failed = true;
         resolve(false);
         return;
       }
@@ -45,13 +44,15 @@ function loadStockfish() {
 
         if (!sf) return tryNext(i + 1);
 
-        sf.onmessage = (e) =>
-          handleMessage(typeof e === "string" ? e : e.data);
+        sf.onmessage = (e) => {
+          const line = typeof e === "string" ? e : e.data;
+          handleMessage(line);
+        };
 
+        // ✅ Proper UCI handshake
         sf.postMessage("uci");
-        sf.postMessage("isready");
 
-        setTimeout(() => resolve(true), 3000);
+        resolve(true);
       } catch {
         tryNext(i + 1);
       }
@@ -65,19 +66,24 @@ function loadStockfish() {
 
 // ================= MESSAGE =================
 function handleMessage(line) {
-  if (!line || failed) return;
+  if (!line) return;
 
-  if (line === "uciok" || line === "readyok") {
+  // 🔥 Proper readiness handling
+  if (line === "uciok") {
+    sf.postMessage("isready");
+  }
+
+  if (line === "readyok") {
     isReady = true;
     return;
   }
 
-  // 🔥 DEBUG: show engine thinking
-  if (line.startsWith("info")) {
-    console.log(line);
+  // 🔥 DEBUG: see real thinking
+  if (line.startsWith("info") && line.includes("depth")) {
+    console.log("THINK:", line);
   }
 
-  // ================= MultiPV parsing =================
+  // ================= MULTIPV =================
   if (line.startsWith("info") && line.includes(" pv ")) {
     const pvIndex = line.indexOf(" pv ");
     const pv = line.slice(pvIndex + 4).trim().split(/\s+/);
@@ -98,7 +104,7 @@ function handleMessage(line) {
     }
   }
 
-  // ================= BEST MOVE =================
+  // ================= BESTMOVE =================
   if (line.startsWith("bestmove")) {
     const best = line.split(" ")[1];
 
@@ -122,11 +128,12 @@ function handleMessage(line) {
 }
 
 // ================= SEARCH =================
-function search(fen, depth = 10, mpv = 3) {
+function search(fen, depth = 12, mpv = 5) {
   return new Promise(async (resolve) => {
     const ready = await loadStockfish();
     if (!ready || !sf) return resolve([]);
 
+    // 🔥 new session only (DO NOT reset engine)
     session++;
     const mySession = session;
 
@@ -138,28 +145,30 @@ function search(fen, depth = 10, mpv = 3) {
     };
 
     try {
-      sf.postMessage("stop");
-      sf.postMessage("ucinewgame");
+      // ❌ REMOVED: ucinewgame (this was breaking strength)
 
       const pv = Math.min(Math.max(1, mpv), MAX_PV);
 
       sf.postMessage(`setoption name MultiPV value ${pv}`);
       sf.postMessage(`position fen ${fen}`);
 
-      // 🔥 FIX: REAL thinking time instead of unstable depth search
-      sf.postMessage(`go movetime ${Math.max(1500, depth * 200)}`);
+      // 🔥 REAL thinking control (safe NNUE behavior)
+      const time = Math.max(MIN_THINK_TIME, depth * 400);
+
+      sf.postMessage(`go movetime ${time}`);
 
     } catch {
       resolve([]);
       return;
     }
 
+    // safety timeout
     setTimeout(() => {
       if (pending?.session === mySession) {
         pending.resolve([]);
         pending = null;
       }
-    }, TIMEOUT);
+    }, time + 2000);
   });
 }
 
@@ -168,18 +177,17 @@ export function createStockfish() {
   loadStockfish();
 
   return {
-    getBestMove: async (fen, depth = 10) => {
+    getBestMove: async (fen, depth = 12) => {
       const moves = await search(fen, depth, 1);
-      return moves.length ? moves[0] : null;
+      return moves[0] || null;
     },
 
-    getBestMoveFromPool: async (fen, depth = 10, mpv = 7) => {
-      const moves = await search(fen, depth, mpv);
-      return moves; // 🔥 FULL PV POOL
+    getBestMoveFromPool: async (fen, depth = 12, mpv = 7) => {
+      return await search(fen, depth, mpv);
     },
 
     stop: () => {
-      session++;
+      session++; // cancels current search safely
       pending = null;
       topMoves = [];
       try {
