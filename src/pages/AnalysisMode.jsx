@@ -1,5 +1,3 @@
-// src/pages/AnalysisMode.jsx
-
 import React, {
   useState,
   useRef,
@@ -730,4 +728,4 @@ ${result.pv}`
       </div>
     </div>
   );
-}
+        }
