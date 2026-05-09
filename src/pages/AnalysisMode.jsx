@@ -1,3 +1,5 @@
+// src/pages/AnalysisMode.jsx
+
 import React, {
   useState,
   useRef,
@@ -9,8 +11,7 @@ import { Chess } from 'chess.js';
 import { Chessboard }
 from 'react-chessboard';
 
-import { parsePgn }
-from '../lib/pgnParser';
+import { parsePgn } from '../lib/pgnParser';
 
 import {
   analyzeGame,
@@ -61,6 +62,7 @@ export default function AnalysisMode({
     setGameNotes,
   ] = useState({});
 
+  // OFFLINE ANALYSIS BOARD
   const [
     analysisBoard,
     setAnalysisBoard,
@@ -75,25 +77,43 @@ export default function AnalysisMode({
     initEngine();
   }, []);
 
+  // =========================
+  // OFFLINE POSITION ANALYSIS
+  // =========================
+
   async function analyzeCurrentPosition() {
-    const fen =
-      analysisBoard.fen();
+    try {
+      const fen =
+        analysisBoard.fen();
 
-    const result =
-      await evaluatePosition(
-        fen,
-        12
-      );
+      const result =
+        await evaluatePosition(
+          fen,
+          12
+        );
 
-    alert(
-`Best Move: ${result.bestMove}
+      alert(
+`Best Move:
+${result.bestMove}
 
-Eval: ${result.eval}
+Eval:
+${result.eval}
 
 PV:
 ${result.pv}`
-    );
+      );
+    } catch (err) {
+      console.error(err);
+
+      alert(
+        'Failed to analyze position'
+      );
+    }
   }
+
+  // =========================
+  // PGN ANALYSIS
+  // =========================
 
   async function handlePgnUpload() {
     try {
@@ -125,7 +145,7 @@ ${result.pv}`
         const move =
           parsed.history[i];
 
-        // BEFORE MOVE
+        // POSITION BEFORE MOVE
 
         const beforeFen =
           chess.fen();
@@ -144,7 +164,7 @@ ${result.pv}`
 
         chess.move(move);
 
-        // AFTER MOVE
+        // POSITION AFTER MOVE
 
         const afterFen =
           chess.fen();
@@ -219,9 +239,9 @@ ${result.pv}`
     }
   }
 
-  // ======================
+  // =========================
   // UPLOAD SCREEN
-  // ======================
+  // =========================
 
   if (
     gameState === 'upload'
@@ -242,14 +262,43 @@ ${result.pv}`
       >
         <button
           onClick={onBack}
+          style={{
+            marginBottom: 20,
+            padding:
+              '10px 16px',
+            borderRadius: 8,
+            border: 'none',
+            cursor: 'pointer',
+            backgroundColor:
+              '#333',
+            color: 'white',
+          }}
         >
           ← Back
         </button>
 
-        <h1>
+        <h1
+          style={{
+            fontSize: 42,
+            marginBottom: 10,
+          }}
+        >
           📊 Professional
           Chess Analysis
         </h1>
+
+        <p
+          style={{
+            color: '#aaa',
+            marginBottom: 25,
+          }}
+        >
+          Paste PGN or
+          analyze positions
+          offline
+        </p>
+
+        {/* PGN INPUT */}
 
         <textarea
           value={pgn}
@@ -258,27 +307,36 @@ ${result.pv}`
               e.target.value
             )
           }
-          placeholder='Paste PGN here...'
+          placeholder={`[Event "Game"]
+
+1. e4 e5
+2. Nf3 Nc6
+3. Bb5 a6`}
           style={{
             width: '100%',
-            height: 250,
-            marginTop: 20,
-            background:
+            height: 280,
+            backgroundColor:
               '#222',
             color: 'white',
             border:
               '1px solid #444',
+            borderRadius: 10,
             padding: 15,
+            fontSize: 14,
+            fontFamily:
+              'monospace',
+            resize: 'vertical',
           }}
         />
 
+        {/* BUTTONS */}
+
         <div
           style={{
-            marginTop: 20,
             display: 'flex',
-            gap: 10,
-            flexWrap:
-              'wrap',
+            gap: 15,
+            marginTop: 20,
+            flexWrap: 'wrap',
           }}
         >
           <button
@@ -288,16 +346,44 @@ ${result.pv}`
             disabled={
               loading
             }
+            style={{
+              padding:
+                '12px 20px',
+              borderRadius: 8,
+              border: 'none',
+              cursor:
+                'pointer',
+              backgroundColor:
+                '#00cc66',
+              color: 'black',
+              fontWeight:
+                'bold',
+              fontSize: 15,
+            }}
           >
             {loading
               ? 'Analyzing...'
-              : 'Analyze PGN'}
+              : 'Analyze Game'}
           </button>
 
           <button
             onClick={() =>
               fileInputRef.current?.click()
             }
+            style={{
+              padding:
+                '12px 20px',
+              borderRadius: 8,
+              border: 'none',
+              cursor:
+                'pointer',
+              backgroundColor:
+                '#007bff',
+              color: 'white',
+              fontWeight:
+                'bold',
+              fontSize: 15,
+            }}
           >
             Upload PGN
           </button>
@@ -306,9 +392,47 @@ ${result.pv}`
             onClick={
               analyzeCurrentPosition
             }
+            style={{
+              padding:
+                '12px 20px',
+              borderRadius: 8,
+              border: 'none',
+              cursor:
+                'pointer',
+              backgroundColor:
+                '#ff9800',
+              color: 'black',
+              fontWeight:
+                'bold',
+              fontSize: 15,
+            }}
           >
             Analyze Current
             Board
+          </button>
+
+          <button
+            onClick={() => {
+              setAnalysisBoard(
+                new Chess()
+              );
+            }}
+            style={{
+              padding:
+                '12px 20px',
+              borderRadius: 8,
+              border: 'none',
+              cursor:
+                'pointer',
+              backgroundColor:
+                '#555',
+              color: 'white',
+              fontWeight:
+                'bold',
+              fontSize: 15,
+            }}
+          >
+            Reset Board
           </button>
 
           <input
@@ -321,25 +445,19 @@ ${result.pv}`
               display:
                 'none',
             }}
-            onChange={(
-              e
-            ) => {
+            onChange={(e) => {
               const file =
                 e.target
                   .files[0];
 
-              if (
-                !file
-              )
+              if (!file)
                 return;
 
               const reader =
                 new FileReader();
 
               reader.onload =
-                (
-                  event
-                ) => {
+                (event) => {
                   setPgn(
                     event
                       .target
@@ -354,9 +472,12 @@ ${result.pv}`
           />
         </div>
 
+        {/* OFFLINE BOARD */}
+
         <div
           style={{
             marginTop: 40,
+            maxWidth: 550,
           }}
         >
           <Chessboard
@@ -380,8 +501,9 @@ ${result.pv}`
               if (
                 move ===
                 null
-              )
+              ) {
                 return false;
+              }
 
               setAnalysisBoard(
                 new Chess(
@@ -397,9 +519,9 @@ ${result.pv}`
     );
   }
 
-  // ======================
-  // ANALYSIS SCREEN
-  // ======================
+  // =========================
+  // SAFETY
+  // =========================
 
   if (
     !uploadedGame ||
@@ -419,6 +541,10 @@ ${result.pv}`
       selectedCoach
     ];
 
+  // =========================
+  // ANALYSIS SCREEN
+  // =========================
+
   return (
     <div
       style={{
@@ -427,37 +553,163 @@ ${result.pv}`
           '2fr 1fr',
         gap: 20,
         padding: 20,
-        background:
+        backgroundColor:
           '#111',
         color: 'white',
         minHeight:
           '100vh',
       }}
     >
-      {/* LEFT */}
+      {/* LEFT PANEL */}
 
       <div>
-        <Chessboard
-          position={
-            uploadedGame
-              .fenHistory[
-              currentMoveIndex
-            ]
-          }
-        />
+        <button
+          onClick={() => {
+            setGameState(
+              'upload'
+            );
+
+            setUploadedGame(
+              null
+            );
+
+            setAnalysis(
+              null
+            );
+
+            setCurrentMoveIndex(
+              0
+            );
+          }}
+          style={{
+            marginBottom: 20,
+            padding:
+              '10px 16px',
+            borderRadius: 8,
+            border: 'none',
+            cursor:
+              'pointer',
+            backgroundColor:
+              '#333',
+            color: 'white',
+          }}
+        >
+          ← Back
+        </button>
+
+        {/* BOARD */}
 
         <div
           style={{
-            marginTop: 20,
-            background:
+            maxWidth: 700,
+            marginBottom: 20,
+          }}
+        >
+          <Chessboard
+            position={
+              uploadedGame
+                .fenHistory[
+                currentMoveIndex
+              ]
+            }
+          />
+        </div>
+
+        {/* GAME INFO */}
+
+        <div
+          style={{
+            backgroundColor:
               '#1c1c1c',
             padding: 20,
-            borderRadius: 10,
+            borderRadius: 12,
+            marginBottom: 20,
           }}
         >
           <h2>
-            {move.san}
+            Game Overview
           </h2>
+
+          <div
+            style={{
+              display:
+                'grid',
+              gridTemplateColumns:
+                '1fr 1fr',
+              gap: 10,
+              marginTop: 15,
+            }}
+          >
+            <div>
+              Accuracy:{' '}
+              <strong>
+                {
+                  analysis.accuracy
+                }
+                %
+              </strong>
+            </div>
+
+            <div>
+              ACPL:{' '}
+              <strong>
+                {
+                  analysis.acpl
+                }
+              </strong>
+            </div>
+
+            <div>
+              Blunders:{' '}
+              <strong>
+                {
+                  analysis
+                    .blunders
+                    .length
+                }
+              </strong>
+            </div>
+
+            <div>
+              Brilliant:{' '}
+              <strong>
+                {
+                  analysis
+                    .brilliantMoves
+                    .length
+                }
+              </strong>
+            </div>
+          </div>
+        </div>
+
+        {/* CURRENT MOVE */}
+
+        <div
+          style={{
+            backgroundColor:
+              '#1c1c1c',
+            padding: 20,
+            borderRadius: 12,
+            marginBottom: 20,
+          }}
+        >
+          <h2>
+            Move{' '}
+            {currentMoveIndex +
+              1}
+          </h2>
+
+          <div
+            style={{
+              fontSize: 42,
+              fontWeight:
+                'bold',
+              marginTop: 10,
+            }}
+          >
+            {move.san}
+          </div>
 
           <div
             style={{
@@ -466,9 +718,10 @@ ${result.pv}`
                   move
                     .classification
                 ],
-              fontSize: 24,
               fontWeight:
                 'bold',
+              fontSize: 24,
+              marginTop: 15,
             }}
           >
             {
@@ -476,10 +729,7 @@ ${result.pv}`
                 move
                   .classification
               ]
-            }
-
-            {' '}
-
+            }{' '}
             {
               move.classification
             }
@@ -487,37 +737,41 @@ ${result.pv}`
 
           <div
             style={{
-              marginTop: 15,
+              marginTop: 20,
               lineHeight: 2,
             }}
           >
             <div>
-              Eval:
-              {' '}
+              <strong>
+                Eval:
+              </strong>{' '}
               {
                 move.playedEval
               }
             </div>
 
             <div>
-              Best Move:
-              {' '}
+              <strong>
+                Best Move:
+              </strong>{' '}
               {
                 move.bestMove
               }
             </div>
 
             <div>
-              PV:
-              {' '}
+              <strong>
+                PV:
+              </strong>{' '}
               {move.pv}
             </div>
 
             {move.mate !==
               null && (
               <div>
-                Mate in
-                {' '}
+                <strong>
+                  Mate:
+                </strong>{' '}
                 {
                   move.mate
                 }
@@ -526,11 +780,60 @@ ${result.pv}`
           </div>
         </div>
 
+        {/* NOTES */}
+
+        <div
+          style={{
+            backgroundColor:
+              '#1c1c1c',
+            padding: 20,
+            borderRadius: 12,
+            marginBottom: 20,
+          }}
+        >
+          <h3>
+            📝 Notes
+          </h3>
+
+          <textarea
+            value={
+              gameNotes[
+                currentMoveIndex
+              ] || ''
+            }
+            onChange={(e) =>
+              setGameNotes({
+                ...gameNotes,
+                [
+                  currentMoveIndex
+                ]:
+                  e.target
+                    .value,
+              })
+            }
+            placeholder='Write your thoughts...'
+            style={{
+              width: '100%',
+              height: 120,
+              marginTop: 10,
+              backgroundColor:
+                '#222',
+              color: 'white',
+              border:
+                '1px solid #444',
+              borderRadius: 10,
+              padding: 12,
+              resize: 'vertical',
+            }}
+          />
+        </div>
+
+        {/* NAVIGATION */}
+
         <div
           style={{
             display: 'flex',
             gap: 10,
-            marginTop: 20,
           }}
         >
           <button
@@ -544,6 +847,17 @@ ${result.pv}`
                   1
               )
             }
+            style={{
+              padding:
+                '12px 18px',
+              borderRadius: 8,
+              border: 'none',
+              backgroundColor:
+                '#007bff',
+              color: 'white',
+              cursor:
+                'pointer',
+            }}
           >
             ⬅ Prev
           </button>
@@ -562,86 +876,103 @@ ${result.pv}`
                   1
               )
             }
+            style={{
+              padding:
+                '12px 18px',
+              borderRadius: 8,
+              border: 'none',
+              backgroundColor:
+                '#007bff',
+              color: 'white',
+              cursor:
+                'pointer',
+            }}
           >
             Next ➜
           </button>
         </div>
       </div>
 
-      {/* RIGHT */}
+      {/* RIGHT PANEL */}
 
       <div>
+        {/* COACH */}
+
         <div
           style={{
-            background:
+            backgroundColor:
               '#1c1c1c',
             padding: 20,
-            borderRadius: 10,
+            borderRadius: 12,
             marginBottom: 20,
           }}
         >
           <h2>
-            Accuracy
+            Coach Mode
           </h2>
 
-          <h1>
-            {
-              analysis.accuracy
-            }
-            %
-          </h1>
-
-          <p>
-            ACPL:
-            {' '}
-            {
-              analysis.acpl
-            }
-          </p>
-        </div>
-
-        <div
-          style={{
-            background:
-              '#1c1c1c',
-            padding: 20,
-            borderRadius: 10,
-            marginBottom: 20,
-          }}
-        >
-          <h2>
-            Coach
-          </h2>
-
-          {Object.entries(
-            COACH_PERSONAS
-          ).map(
-            ([
-              key,
-              value,
-            ]) => (
-              <button
-                key={key}
-                onClick={() =>
-                  setSelectedCoach(
-                    key
-                  )
-                }
-              >
-                {
-                  value.emoji
-                }
-                {' '}
-                {
-                  value.name
-                }
-              </button>
-            )
-          )}
+          <div
+            style={{
+              display:
+                'flex',
+              flexDirection:
+                'column',
+              gap: 10,
+              marginTop: 15,
+            }}
+          >
+            {Object.entries(
+              COACH_PERSONAS
+            ).map(
+              ([
+                key,
+                value,
+              ]) => (
+                <button
+                  key={key}
+                  onClick={() =>
+                    setSelectedCoach(
+                      key
+                    )
+                  }
+                  style={{
+                    padding:
+                      '12px',
+                    borderRadius: 8,
+                    border:
+                      'none',
+                    cursor:
+                      'pointer',
+                    backgroundColor:
+                      selectedCoach ===
+                      key
+                        ? '#00bfff'
+                        : '#333',
+                    color:
+                      selectedCoach ===
+                      key
+                        ? 'black'
+                        : 'white',
+                    fontWeight:
+                      'bold',
+                  }}
+                >
+                  {
+                    value.emoji
+                  }{' '}
+                  {
+                    value.name
+                  }
+                </button>
+              )
+            )}
+          </div>
 
           <div
             style={{
               marginTop: 20,
+              lineHeight: 1.7,
+              color: '#ddd',
             }}
           >
             {coach.getComment(
@@ -650,18 +981,36 @@ ${result.pv}`
           </div>
         </div>
 
+        {/* BRILLIANT MOVES */}
+
         <div
           style={{
-            background:
+            backgroundColor:
               '#1c1c1c',
             padding: 20,
-            borderRadius: 10,
+            borderRadius: 12,
+            marginBottom: 20,
           }}
         >
           <h2>
             💎 Brilliant
             Moves
           </h2>
+
+          {analysis
+            .brilliantMoves
+            .length === 0 && (
+            <div
+              style={{
+                color:
+                  '#888',
+                marginTop: 10,
+              }}
+            >
+              No brilliant
+              moves found
+            </div>
+          )}
 
           {analysis.brilliantMoves.map(
             (
@@ -670,62 +1019,4 @@ ${result.pv}`
             ) => (
               <div
                 key={index}
-              >
-                💎 Move
-                {' '}
-                {
-                  move.turn
-                }
-                :
-                {' '}
-                {
-                  move.move
-                }
-              </div>
-            )
-          )}
-
-          <h2
-            style={{
-              marginTop: 20,
-            }}
-          >
-            💥 Blunders
-          </h2>
-
-          {analysis.blunders.map(
-            (
-              move,
-              index
-            ) => (
-              <div
-                key={index}
-                onClick={() =>
-                  setCurrentMoveIndex(
-                    move.turn -
-                      1
-                  )
-                }
-                style={{
-                  cursor:
-                    'pointer',
-                }}
-              >
-                💥 Move
-                {' '}
-                {
-                  move.turn
-                }
-                :
-                {' '}
-                {
-                  move.move
-                }
-              </div>
-            )
-          )}
-        </div>
-      </div>
-    </div>
-  );
-        }
+                style={
