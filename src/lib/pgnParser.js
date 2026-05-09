@@ -1,15 +1,19 @@
+// src/lib/pgnParser.js
+
 import { Chess } from 'chess.js';
 
 export function parsePgn(pgn) {
   const chess = new Chess();
 
-  const loaded = chess.loadPgn(pgn);
-
-  if (!loaded) {
+  try {
+    chess.loadPgn(pgn);
+  } catch (err) {
     throw new Error('Invalid PGN');
   }
 
-  const history = chess.history({ verbose: true });
+  const history = chess.history({
+    verbose: true,
+  });
 
   chess.reset();
 
@@ -17,7 +21,10 @@ export function parsePgn(pgn) {
 
   history.forEach((move) => {
     chess.move(move);
-    fenHistory.push(chess.fen());
+
+    fenHistory.push(
+      chess.fen()
+    );
   });
 
   return {
