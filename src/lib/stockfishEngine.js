@@ -10,7 +10,7 @@ export async function initEngine() {
     }
 
     engine = new Worker(
-      '/stockfish-18.js'
+      '/stockfish.js'
     );
 
     engine.postMessage('uci');
